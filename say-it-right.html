@@ -1,0 +1,657 @@
+<title>Say It Right</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one-screen phone app. Slim header, scrolling view, four-tab bar at the bottom.
+   Look: language-notebook. Red pen strikes the wrong sentence, green pen writes the right one. */
+:root{
+  --bg:#EDF1F3; --surface:#FFFFFF; --surface2:#F5F8F9; --ink:#12202B; --muted:#5A6A75; --line:#D5DDE2;
+  --accent:#0E6B63; --accent-ink:#FFFFFF; --accent-soft:#D6EEEA;
+  --wrong:#B3261E; --wrong-soft:#FBE5E2; --ok:#1B6E38; --ok-soft:#DCF1E2; --hl:#FFE08A; --hl-ink:#4A3A00;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C151A; --surface:#15222A; --surface2:#1B2B34; --ink:#E8EFF2; --muted:#93A4AE; --line:#27383F;
+  --accent:#4FC7B8; --accent-ink:#04211E; --accent-soft:#153B37;
+  --wrong:#FF9188; --wrong-soft:#3A1B19; --ok:#80DA9C; --ok-soft:#173620; --hl:#6B5A1A; --hl-ink:#FFF1BD; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C151A; --surface:#15222A; --surface2:#1B2B34; --ink:#E8EFF2; --muted:#93A4AE; --line:#27383F;
+  --accent:#4FC7B8; --accent-ink:#04211E; --accent-soft:#153B37;
+  --wrong:#FF9188; --wrong-soft:#3A1B19; --ok:#80DA9C; --ok-soft:#173620; --hl:#6B5A1A; --hl-ink:#FFF1BD; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0;overflow:hidden}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.app{height:100%;max-width:720px;margin:0 auto;display:flex;flex-direction:column;min-height:0}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 0 8px}
+.brand{font:700 22px var(--display);letter-spacing:-.02em}
+.brand i{font-style:normal;background:var(--hl);color:var(--hl-ink);padding:0 6px;border-radius:6px;margin-left:2px}
+.lvl{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+main{flex:1;min-height:0;position:relative}
+.view{position:absolute;inset:0;display:none;flex-direction:column;min-height:0}
+.view.on{display:flex}
+.scroll{flex:1;min-height:0;overflow-y:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch}
+nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 0 max(8px,env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg)}
+nav a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;text-decoration:none;color:var(--muted);font:600 12px var(--body)}
+nav a svg{width:24px;height:24px}
+nav a[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+svg.i{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* buttons */
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:600;background:var(--accent);color:var(--accent-ink);min-height:44px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.soft{background:var(--accent-soft);color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.iconbtn{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none;color:var(--muted)}
+.iconbtn svg{width:20px;height:20px}
+.tiny{font-size:13px;color:var(--muted)}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;font-size:14px;font-weight:500}
+
+/* chat */
+.msgs{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:8px 0 12px}
+.row{display:flex;flex-direction:column;gap:6px;max-width:92%}
+.row.user{align-self:flex-end;align-items:flex-end}
+.row.bot{align-self:flex-start}
+.bub{padding:10px 14px;border-radius:18px;overflow-wrap:anywhere}
+.user .bub{background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:6px}
+.bot .bub{background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:6px}
+.bot-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.linkbtn{background:none;border:0;padding:4px 0;color:var(--accent);font-weight:600;font-size:13px;min-height:32px}
+.de{font-size:14px;color:var(--muted);padding:2px 4px}
+.fix{width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--surface);align-self:stretch;max-width:100%}
+.fix div{padding:8px 12px;overflow-wrap:anywhere}
+.fix .w{background:var(--wrong-soft);color:var(--wrong);text-decoration:line-through;text-decoration-thickness:2px}
+.fix .r{background:var(--ok-soft);color:var(--ok);font-weight:600}
+.fix .why{color:var(--ink);font-size:14px}
+.fix .why b{font:700 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block}
+.okmark{font-size:13px;color:var(--ok);font-weight:600}
+.vocab{display:flex;gap:6px;flex-wrap:wrap}
+.vocab span{font-size:12px;background:var(--hl);color:var(--hl-ink);border-radius:8px;padding:2px 8px}
+.hintbox{align-self:stretch;display:flex;flex-direction:column;gap:6px;background:var(--surface2);border:1px dashed var(--line);border-radius:12px;padding:10px}
+.hintbox button{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.hintbox small{display:block;color:var(--muted)}
+.typing{display:flex;gap:4px;padding:14px}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:b 1s infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+.suggest{display:flex;gap:8px;flex-wrap:wrap}
+.composer{display:flex;gap:8px;align-items:center;padding:8px 0}
+.composer input{flex:1;min-width:0;height:48px;border-radius:24px;border:1px solid var(--line);background:var(--surface);padding:0 16px}
+.mic{width:52px;height:52px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.mic svg{width:24px;height:24px}
+.mic.on{background:var(--wrong);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--wrong) 50%,transparent)}100%{box-shadow:0 0 0 16px transparent}}
+.send{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none;color:var(--accent)}
+.send svg{width:20px;height:20px}
+.pagehead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0 8px}
+.pagehead h2{font-size:22px}
+
+/* scenarios */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sc{display:flex;flex-direction:column;gap:10px;align-items:flex-start;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-height:112px}
+.sc svg{width:30px;height:30px;color:var(--accent)}
+.sc b{font:700 17px var(--display)}
+.sc[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.sc small{color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:10px 8px;font-weight:600;min-height:44px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.lab{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* decks */
+.deck{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.deck .nm{flex:1;min-width:0}
+.deck b{display:block;font:700 16px var(--display)}
+.bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.badge{font:700 12px var(--body);background:var(--wrong-soft);color:var(--wrong);border-radius:99px;padding:2px 10px}
+.mist{background:var(--wrong-soft);border-color:transparent}
+.card3d{perspective:900px}
+.flash{width:100%;min-height:280px;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center}
+.flash .big{font:700 30px/1.15 var(--display);overflow-wrap:anywhere}
+.flash .ex{color:var(--muted);font-style:italic}
+.flash .tag{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.gradebtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gradebtns .no{background:var(--wrong-soft);color:var(--wrong)}
+.gradebtns .yes{background:var(--ok-soft);color:var(--ok)}
+.prog{display:flex;align-items:center;gap:10px}
+.prog .bar{flex:1;margin:0}
+
+/* translator */
+textarea{width:100%;min-height:96px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);padding:12px 14px;resize:vertical}
+.words{display:flex;flex-wrap:wrap;gap:8px}
+.wd{display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 12px;text-align:left;min-width:0}
+.wd .e{font-weight:700}
+.wd .g{font-size:14px;color:var(--accent)}
+.wd .t{font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.wd[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.result-en{font:600 20px/1.3 var(--display)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;max-width:min(92vw,520px);z-index:20;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.err{align-self:stretch;background:var(--wrong-soft);color:var(--wrong);border-radius:12px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+
+<div class="app">
+  <header><div class="brand">Say It <i>Right</i></div><span class="lvl">Englisch · B1</span></header>
+  <main>
+    <!-- TUTOR -->
+    <section class="view on" id="v-tutor" aria-label="Tutor"></section>
+
+    <!-- ROLLENSPIEL -->
+    <section class="view" id="v-rollenspiel" aria-label="Rollenspiel">
+      <div id="role-pick" class="scroll stack">
+        <div class="pagehead"><h2>Wo bist du heute?</h2></div>
+        <div class="grid" id="sc-grid"></div>
+        <div class="stack" id="role-setup" hidden>
+          <div class="lab">Ich spiele</div>
+          <div class="seg" id="role-seg"></div>
+          <button class="btn" id="role-go">Rollenspiel starten</button>
+        </div>
+      </div>
+      <div id="role-play" hidden style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="pagehead">
+          <div style="min-width:0"><h2 id="rp-title"></h2><div class="tiny" id="rp-sub"></div></div>
+          <div style="display:flex;gap:8px;flex:none">
+            <button class="btn soft" id="rp-hint">Hinweis</button>
+            <button class="btn ghost" id="rp-back">Beenden</button>
+          </div>
+        </div>
+        <div id="rp-chat" style="display:flex;flex-direction:column;flex:1;min-height:0"></div>
+      </div>
+    </section>
+
+    <!-- KARTEN -->
+    <section class="view" id="v-karten" aria-label="Karteikarten"><div class="scroll stack" id="cards-root"></div></section>
+
+    <!-- UEBERSETZER -->
+    <section class="view" id="v-uebersetzer" aria-label="Übersetzer">
+      <div class="scroll stack">
+        <div class="pagehead"><h2>Satz Wort für Wort</h2></div>
+        <textarea id="tr-in" placeholder="Englischen (oder deutschen) Satz eingeben …" aria-label="Satz"></textarea>
+        <div class="suggest" id="tr-ex"></div>
+        <button class="btn" id="tr-go">Erklären</button>
+        <div id="tr-out" class="stack"></div>
+      </div>
+    </section>
+  </main>
+  <nav aria-label="Bereiche">
+    <a href="#tutor" data-t="tutor"><svg class="i" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3"/></svg>Tutor</a>
+    <a href="#rollenspiel" data-t="rollenspiel"><svg class="i" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Rollenspiel</a>
+    <a href="#karten" data-t="karten"><svg class="i" viewBox="0 0 24 24"><path d="M6 8h12v12H6z M9 4h9v4"/></svg>Karten</a>
+    <a href="#uebersetzer" data-t="uebersetzer"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h13l-3-3 M20 16H7l3 3"/></svg>Übersetzer</a>
+  </nav>
+</div>
+
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+const ICON={
+  mic:'<svg class="i" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3"/></svg>',
+  send:'<svg class="i" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>',
+  spk:'<svg class="i" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z M17 9a4 4 0 0 1 0 6"/></svg>'
+};
+let toastT;
+function toast(msg){const old=$('.toast');if(old)old.remove();const t=el('div','toast',msg);t.setAttribute('role','status');document.body.appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),4200)}
+function speak(text,lang){try{const u=new SpeechSynthesisUtterance(text);u.lang=lang;u.rate=.92;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){toast('Vorlesen ist hier nicht verfügbar.')}}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+async function use(name){try{return window.claude?await window.claude.use(name):null}catch(e){return null}}
+
+/* ---------- storage: local + private db copy ---------- */
+const KEY='sayitright.v1';
+let S={progress:{},custom:[],rev:0};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+let dbDoc=null,saveT;
+function save(){S.rev=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}clearTimeout(saveT);saveT=setTimeout(pushDb,1500)}
+async function pushDb(){if(!dbDoc)return;try{await dbDoc.set({json:JSON.stringify(S)})}catch(e){}}
+async function initDb(){
+  try{
+    const db=await use('db'),user=await use('user');if(!db||!user)return;
+    const id=await user.id();if(!id)return;
+    dbDoc=db.doc('data/users/'+id+'/sayitright');
+    const snap=await dbDoc.get();
+    if(snap.exists){const d=snap.data();if(d&&d.json){const r=JSON.parse(d.json);if((r.rev||0)>(S.rev||0)){S=Object.assign({progress:{},custom:[]},r);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}renderCards()}}}
+    else if(S.rev)pushDb();
+  }catch(e){}
+}
+
+/* ---------- Claude ---------- */
+let _sample;
+const getSample=()=>_sample||(_sample=use('sample'));
+async function askJSON(prompt,opts){
+  const sample=await getSample();
+  if(!sample)throw{code:'unavailable'};
+  const r=await sample(prompt,Object.assign({modelTier:'quick',cache:false},opts||{}));
+  const m=(r.text||'').match(/\{[\s\S]*\}/);
+  if(!m)throw{code:'invalid_json'};
+  try{return JSON.parse(m[0])}catch(e){throw{code:'invalid_json'}}
+}
+function errText(c){
+  return ({not_granted:'Claude wurde nicht erlaubt. Tippe auf „Nochmal“ und erlaube den Zugriff.',
+    unavailable:'Claude ist in dieser Ansicht nicht verfügbar. Öffne die App direkt in claude.ai.',
+    rate_limited:'Zu viele Anfragen. Warte einen Moment.',
+    invalid_json:'Die Antwort war nicht lesbar. Bitte nochmal versuchen.',
+    sampling_disabled:'Claude ist für diese Seite ausgeschaltet.'})[c]||'Das hat nicht geklappt. Bitte nochmal versuchen.'
+}
+
+/* ---------- cards data ---------- */
+const BUILTIN=[
+ {id:'cafe',name:'Café',cards:[
+  ['flat white','Flat White (Kaffee mit Milchschaum)','I\'ll have a flat white, please.'],
+  ['to take away','zum Mitnehmen','Is that for here or to take away?'],
+  ['oat milk','Hafermilch','Can I have it with oat milk?'],
+  ['a refill','Nachschenken','Do you offer free refills?'],
+  ['the bill','die Rechnung','Could we have the bill, please?'],
+  ['to be out of','ausverkauft sein / nichts mehr haben von','I\'m afraid we\'re out of croissants.'],
+  ['a tip','Trinkgeld','Is a tip included?'],
+  ['to queue up','sich anstellen','You have to queue up at the counter.']]},
+ {id:'rest',name:'Restaurant',cards:[
+  ['a reservation','eine Reservierung','I\'d like to make a reservation for four.'],
+  ['a starter','eine Vorspeise','I\'ll have the soup as a starter.'],
+  ['main course','Hauptgericht','What do you recommend as a main course?'],
+  ['to be allergic to','allergisch sein gegen','I\'m allergic to nuts.'],
+  ['medium-rare','halb durchgebraten','I\'d like my steak medium-rare.'],
+  ['leftovers','Reste','Could I take the leftovers home?'],
+  ['service charge','Servicegebühr','Is the service charge included?'],
+  ['to split the bill','getrennt zahlen','Can we split the bill, please?']]},
+ {id:'hotel',name:'Hotel',cards:[
+  ['to check in','einchecken','We\'d like to check in, please.'],
+  ['a double room','ein Doppelzimmer','I booked a double room for two nights.'],
+  ['vacancy','freies Zimmer','Do you have any vacancies this weekend?'],
+  ['complimentary','kostenlos (als Extra)','Breakfast is complimentary.'],
+  ['check-out time','Abreisezeit','What is the check-out time?'],
+  ['the front desk','die Rezeption','Please call the front desk if you need help.'],
+  ['amenities','Ausstattung, Annehmlichkeiten','The hotel has great amenities.'],
+  ['a wake-up call','Weckruf','Could I get a wake-up call at seven?']]},
+ {id:'super',name:'Supermarkt',cards:[
+  ['an aisle','ein Gang (im Laden)','Where is the pasta aisle?'],
+  ['the checkout','die Kasse','The checkout is on your left.'],
+  ['a receipt','ein Kassenbon','Do you need a receipt?'],
+  ['fresh produce','frisches Obst und Gemüse','The fresh produce is at the entrance.'],
+  ['on offer','im Angebot','Apples are on offer this week.'],
+  ['the expiry date','das Haltbarkeitsdatum','Check the expiry date before you buy.'],
+  ['to run out of','etwas geht aus','We\'ve run out of milk.'],
+  ['a carrier bag','eine Tragetasche','Would you like a carrier bag?']]},
+ {id:'doc',name:'Arzt',cards:[
+  ['an appointment','ein Termin','I\'d like to make an appointment.'],
+  ['symptoms','Symptome','What symptoms do you have?'],
+  ['a prescription','ein Rezept','The doctor gave me a prescription.'],
+  ['a sore throat','Halsschmerzen','I\'ve had a sore throat for three days.'],
+  ['to have a temperature','Fieber haben','I think I have a temperature.'],
+  ['painkillers','Schmerzmittel','Take painkillers if the pain gets worse.'],
+  ['to feel dizzy','sich schwindelig fühlen','I feel dizzy when I stand up.'],
+  ['side effects','Nebenwirkungen','Are there any side effects?']]},
+ {id:'travel',name:'Unterwegs',cards:[
+  ['a delay','eine Verspätung','There is a delay of twenty minutes.'],
+  ['to miss a train','einen Zug verpassen','I\'m afraid I missed my train.'],
+  ['platform','Bahnsteig','The train leaves from platform 4.'],
+  ['luggage','Gepäck','Where can I leave my luggage?'],
+  ['boarding pass','Bordkarte','Please show your boarding pass.'],
+  ['a connecting flight','ein Anschlussflug','I have a connecting flight in Dublin.'],
+  ['fully booked','ausgebucht','The hotel is fully booked.'],
+  ['lost property','Fundbüro','Ask at the lost property office.']]},
+ {id:'phrasal',name:'Phrasal Verbs',cards:[
+  ['to look forward to','sich freuen auf','I\'m looking forward to the weekend.'],
+  ['to give up','aufgeben','Don\'t give up now!'],
+  ['to find out','herausfinden','I need to find out what time it starts.'],
+  ['to carry on','weitermachen','Please carry on with your work.'],
+  ['to put off','verschieben, aufschieben','Stop putting off your homework.'],
+  ['to turn down','ablehnen','She turned down the job offer.'],
+  ['to come across','zufällig stoßen auf','I came across an old photo.'],
+  ['to get along with','sich verstehen mit','I get along with my colleagues.']]}
+];
+function allDecks(){
+  const d=BUILTIN.map(b=>({id:b.id,name:b.name,cards:b.cards.map((c,i)=>({id:b.id+i,en:c[0],de:c[1],ex:c[2],topic:b.name}))}));
+  const by={};S.custom.forEach(c=>{(by[c.topic]=by[c.topic]||[]).push(c)});
+  Object.keys(by).forEach(t=>d.push({id:'x:'+t,name:t,custom:true,cards:by[t]}));
+  return d;
+}
+const getP=id=>S.progress[id]||{box:0,due:0,wrong:false};
+function addCard(en,de,ex,topic,wrong){
+  const key=en.trim().toLowerCase();
+  let c=S.custom.find(x=>x.en.toLowerCase()===key);
+  if(!c){c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),en:en.trim(),de:de.trim(),ex:(ex||'').trim(),topic};S.custom.push(c)}
+  if(wrong)S.progress[c.id]=Object.assign({box:0,due:0},S.progress[c.id],{wrong:true,box:0,due:0});
+  save();if(typeof renderCards==='function')renderCards();
+  return c;
+}
+
+/* ---------- chat component ---------- */
+function Chat(root,cfg){
+  this.cfg=cfg;this.hist=[];this.busy=false;
+  root.innerHTML='<div class="msgs" role="log" aria-live="polite"></div><div class="composer"><button class="mic" type="button" aria-label="Sprechen">'+ICON.mic+'</button><input type="text" placeholder="Sprich oder tippe auf Englisch …" aria-label="Nachricht" autocomplete="off" autocapitalize="sentences"><button class="send" type="button" aria-label="Senden">'+ICON.send+'</button></div>';
+  this.msgs=$('.msgs',root);this.input=$('input',root);this.mic=$('.mic',root);
+  this.mic.onclick=()=>this.toggleMic();
+  $('.send',root).onclick=()=>this.submit();
+  this.input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();this.submit()}};
+}
+Chat.prototype.submit=function(){const t=this.input.value;this.input.value='';this.send(t)};
+Chat.prototype.transcript=function(hist){
+  return hist.filter(h=>h.role==='user'||h.role==='bot').slice(-8).map(h=>(h.role==='user'?'Learner: ':'You: ')+h.text).join('\n')||'(conversation just started)';
+};
+Chat.prototype.send=async function(text){
+  text=(text||'').trim();if(!text||this.busy)return;
+  const u={role:'user',text};const before=this.hist.slice();
+  this.hist.push(u);this.busy=true;this.render();
+  try{
+    const r=await this.cfg.ask(before,text);
+    u.corrections=(Array.isArray(r.corrections)?r.corrections:[]).filter(c=>c&&c.wrong&&c.right&&String(c.wrong).trim()!==String(c.right).trim()).slice(0,3);
+    u.vocab=(Array.isArray(r.vocab)?r.vocab:[]).filter(v=>v&&v.en&&v.de).slice(0,4);
+    u.vocab.forEach(v=>addCard(String(v.en),String(v.de),String(v.ex||''),'Aus Gesprächen',true));
+    u.checked=true;
+    this.hist.push({role:'bot',text:String(r.reply||'…'),de:String(r.reply_de||'')});
+  }catch(e){u.checked=false;this.hist.push({role:'err',code:e&&e.code,text})}
+  this.busy=false;this.render();
+};
+Chat.prototype.open=async function(){ // bot speaks first (roleplay)
+  this.busy=true;this.render();
+  try{const r=await this.cfg.opening();this.hist.push({role:'bot',text:String(r.reply||'…'),de:String(r.reply_de||'')})}
+  catch(e){this.hist.push({role:'err',code:e&&e.code,opening:true})}
+  this.busy=false;this.render();
+};
+Chat.prototype.retry=function(){
+  const err=this.hist.pop();
+  if(err.opening){this.open();return}
+  this.hist.pop();this.send(err.text);
+};
+Chat.prototype.toggleMic=function(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const help='Spracheingabe geht hier nicht. Tippe ins Textfeld und nutze das Mikrofon deiner Handy-Tastatur.';
+  if(!SR){toast(help);return}
+  if(this.rec){this.rec.stop();return}
+  const r=new SR();r.lang='en-US';r.interimResults=true;r.maxAlternatives=1;
+  let heard='',failed=false;
+  r.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;heard=t;this.input.value=t};
+  r.onerror=e=>{failed=true;toast(e.error==='no-speech'?'Ich habe nichts gehört. Versuch es nochmal.':help)};
+  r.onend=()=>{this.rec=null;this.mic.classList.remove('on');if(heard.trim()&&!failed){const t=this.input.value;this.input.value='';this.send(t)}};
+  try{r.start();this.rec=r;this.mic.classList.add('on')}catch(e){toast(help)}
+};
+Chat.prototype.render=function(){
+  const m=this.msgs;m.textContent='';
+  this.hist.forEach(h=>{
+    if(h.role==='user'){
+      const row=el('div','row user');row.appendChild(el('div','bub',h.text));
+      (h.corrections||[]).forEach(c=>{
+        const f=el('div','fix');
+        f.appendChild(el('div','w',String(c.wrong)));
+        f.appendChild(el('div','r',String(c.right)));
+        const w=el('div','why');w.appendChild(el('b',null,'Warum?'));w.appendChild(document.createTextNode(String(c.why_de||'')));f.appendChild(w);
+        row.appendChild(f);
+      });
+      if(h.checked&&!(h.corrections||[]).length)row.appendChild(el('span','okmark','✓ Richtig'));
+      if(h.vocab&&h.vocab.length){const v=el('div','vocab');h.vocab.forEach(x=>v.appendChild(el('span',null,x.en+' = '+x.de)));row.appendChild(v);row.appendChild(el('span','tiny','Als Karteikarten gespeichert'))}
+      m.appendChild(row);
+    }else if(h.role==='bot'){
+      const row=el('div','row bot');row.appendChild(el('div','bub',h.text));
+      const tools=el('div','bot-tools');
+      const sp=el('button','linkbtn','Vorlesen');sp.onclick=()=>speak(h.text,this.cfg.lang);tools.appendChild(sp);
+      if(h.de){const de=el('div','de',h.de);de.hidden=true;const tb=el('button','linkbtn','Auf Deutsch');tb.onclick=()=>{de.hidden=!de.hidden};tools.appendChild(tb);row.appendChild(tools);row.appendChild(de)}else row.appendChild(tools);
+      if(h.suggest){const s=el('div','suggest');h.suggest.forEach(t=>{const b=el('button','chip',t);b.onclick=()=>this.send(t);s.appendChild(b)});row.appendChild(s)}
+      m.appendChild(row);
+    }else if(h.role==='hint'){
+      const b=el('div','hintbox');b.appendChild(el('div','lab','So könntest du antworten'));
+      h.options.forEach(o=>{const bt=el('button',null,o.en);if(o.de)bt.appendChild(el('small',null,o.de));bt.onclick=()=>{this.input.value=o.en;this.input.focus()};b.appendChild(bt)});
+      m.appendChild(b);
+    }else if(h.role==='err'){
+      const e=el('div','err');e.appendChild(el('span',null,errText(h.code)));
+      const rb=el('button','btn ghost','Nochmal');rb.onclick=()=>this.retry();e.appendChild(rb);m.appendChild(e);
+    }
+  });
+  if(this.busy){const t=el('div','row bot');const b=el('div','bub typing');b.setAttribute('aria-label','Tutor schreibt');b.innerHTML='<span></span><span></span><span></span>';t.appendChild(b);m.appendChild(t)}
+  m.scrollTop=m.scrollHeight;
+};
+
+/* ---------- prompts ---------- */
+const FIXRULES=`Check the learner's LAST message for English mistakes (grammar, tense, word choice, prepositions, word order, false friends with German). Ignore capitalization, punctuation and speech-recognition glitches. Be strict only about real errors; do not "improve" correct sentences.
+corrections: array (max 2) of {"wrong": the faulty sentence copied exactly from the learner, "right": the corrected full sentence, "why_de": one or two short sentences in German that explain the rule}. Empty array if there is no mistake.
+vocab: array (max 3) of words or phrases the learner got wrong or needed, as {"en":"...","de":"German meaning","ex":"short English example"}. Empty if none.`;
+function tutorPrompt(hist,text){
+  return `You are a friendly English tutor for a German-speaking learner at level B1. The learner talks to you in English (by voice or typing).
+Your own reply is in simple SPANISH: very short, easy sentences (A2), at most 3 sentences. React to what the learner said, then ask ONE short follow-up question in Spanish that the learner answers in English. If the learner wrote in German or Spanish instead of English, gently ask them in Spanish to try in English and give no corrections.
+${FIXRULES}
+Answer with ONLY a JSON object, no other text: {"corrections":[...],"vocab":[...],"reply":"Spanish reply","reply_de":"German translation of the reply"}
+
+Conversation so far:
+${Chat.prototype.transcript(hist)}
+
+Learner's last message: ${JSON.stringify(text)}`;
+}
+function roleSetup(sc,swap){
+  const you=swap?sc.roles[1]:sc.roles[0],bot=swap?sc.roles[0]:sc.roles[1];
+  return {you,bot,scene:sc.scene,name:sc.name};
+}
+function rolePrompt(rs,hist,text){
+  return `You are playing a role in an English role-play for a German-speaking learner at level B1.
+Scene: ${rs.scene}. You play: ${rs.bot}. The learner plays: ${rs.you}.
+Stay in character. Speak natural, friendly English at B1 level: 1 to 3 short sentences, then usually a question or a reaction that moves the situation forward. Do not explain anything and do not break character.
+${text==null?'Start the scene now with your first line. corrections and vocab must be empty arrays.':FIXRULES}
+Answer with ONLY a JSON object, no other text: {"corrections":[...],"vocab":[...],"reply":"your line in English","reply_de":"German translation of your line"}
+
+Conversation so far:
+${Chat.prototype.transcript(hist)}
+${text==null?'':'\nLearner\'s last line: '+JSON.stringify(text)}`;
+}
+
+/* ---------- tabs ---------- */
+const TABS=['tutor','rollenspiel','karten','uebersetzer'];
+function route(){
+  let t=(location.hash||'').slice(1);if(!TABS.includes(t))t='tutor';
+  TABS.forEach(n=>{$('#v-'+n).classList.toggle('on',n===t)});
+  document.querySelectorAll('nav a').forEach(a=>{if(a.dataset.t===t)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  if(t==='karten')renderCards();
+}
+addEventListener('hashchange',route);
+
+/* ---------- tutor ---------- */
+const tutor=new Chat($('#v-tutor'),{lang:'es-ES',ask:(h,t)=>askJSON(tutorPrompt(h,t))});
+tutor.hist.push({role:'bot',text:'¡Hola! Soy tu tutor de inglés. Habla conmigo en inglés. ¿Cómo estás hoy?',de:'Hallo! Ich bin dein Englischlehrer. Sprich mit mir auf Englisch. Wie geht es dir heute?',
+  suggest:['I am fine, thank you. How are you?','Let me tell you about my day.','I would like to practise my English.','Yesterday I go to the cinema.']});
+tutor.render();
+
+/* ---------- roleplay ---------- */
+const SC=[
+ {id:'cafe',name:'Café',roles:['Gast','Barista'],scene:'a busy coffee shop; the guest wants to order drinks and a snack',icon:'<path d="M4 8h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8z M16 10h2a2 2 0 0 1 0 4h-2 M7 3v2 M11 3v2"/>'},
+ {id:'rest',name:'Restaurant',roles:['Gast','Kellner/in'],scene:'a restaurant; the guest has a table, orders food, has a question about an allergy and asks for the bill',icon:'<path d="M7 3v8 M5 3v5a2 2 0 0 0 4 0V3 M7 11v10 M17 3c-2 2-3 5-3 8h3v10"/>'},
+ {id:'hotel',name:'Hotel',roles:['Gast','Rezeption'],scene:'a hotel front desk; the guest arrives to check in and there is a small problem with the room',icon:'<path d="M3 18V7 M3 14h18v4 M21 14v-2a3 3 0 0 0-3-3h-7v5"/>'},
+ {id:'super',name:'Supermarkt',roles:['Kunde','Kassierer/in'],scene:'a supermarket; the customer cannot find an item and then pays at the checkout',icon:'<path d="M3 4h2l2.5 11h10l2-8H6.5 M9 20h.01 M17 20h.01"/>'},
+ {id:'doc',name:'Arzt',roles:['Patient/in','Arzt/Ärztin'],scene:"a doctor's surgery; the patient describes symptoms and gets advice",icon:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8 M8 12h8"/>'},
+ {id:'job',name:'Vorstellungsgespräch',roles:['Bewerber/in','Personalchef/in'],scene:'a job interview for an office job; the interviewer asks about experience and strengths',icon:'<path d="M4 8h16v11H4z M9 8V5h6v3 M4 13h16"/>'}
+];
+let chosen=null,swap=false,roleChat=null,rs=null;
+const grid=$('#sc-grid');
+SC.forEach(sc=>{
+  const b=el('button','sc');b.setAttribute('aria-pressed','false');
+  b.innerHTML='<svg class="i" viewBox="0 0 24 24">'+sc.icon+'</svg>';
+  b.appendChild(el('b',null,sc.name));b.appendChild(el('small',null,sc.roles[0]+' · '+sc.roles[1]));
+  b.onclick=()=>{chosen=sc;swap=false;grid.querySelectorAll('.sc').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');$('#role-setup').hidden=false;drawSeg();$('#role-setup').scrollIntoView({behavior:'smooth',block:'nearest'})};
+  grid.appendChild(b);
+});
+function drawSeg(){
+  const seg=$('#role-seg');seg.textContent='';
+  chosen.roles.forEach((r,i)=>{const b=el('button',null,r);b.setAttribute('aria-pressed',String((i===1)===swap));b.onclick=()=>{swap=i===1;drawSeg()};seg.appendChild(b)});
+}
+$('#role-go').onclick=()=>{
+  rs=roleSetup(chosen,swap);
+  $('#role-pick').style.display='none';
+  const p=$('#role-play');p.hidden=false;p.style.display='flex';
+  $('#rp-title').textContent=rs.name;$('#rp-sub').textContent='Du: '+rs.you+' · Tutor: '+rs.bot;
+  roleChat=new Chat($('#rp-chat'),{lang:'en-US',ask:(h,t)=>askJSON(rolePrompt(rs,h,t)),opening:()=>askJSON(rolePrompt(rs,[],null))});
+  roleChat.open();
+};
+$('#rp-back').onclick=()=>{
+  if(roleChat&&roleChat.rec)roleChat.rec.stop();
+  roleChat=null;$('#rp-chat').textContent='';
+  const p=$('#role-play');p.hidden=true;p.style.display='none';$('#role-pick').style.display='';
+};
+$('#rp-hint').onclick=async()=>{
+  if(!roleChat||roleChat.busy)return;
+  const btn=$('#rp-hint');btn.disabled=true;btn.textContent='…';
+  try{
+    const r=await askJSON(`Role-play at a ${rs.scene}. The learner (level B1, German speaker) plays: ${rs.you}. Conversation so far:\n${roleChat.transcript(roleChat.hist)}\n\nGive 3 different natural things the learner could say next, in English at B1 level, each with a German translation. Answer with ONLY JSON: {"options":[{"en":"...","de":"..."}]}`);
+    const o=(r.options||[]).filter(x=>x&&x.en).slice(0,3);
+    if(o.length){roleChat.hist.push({role:'hint',options:o});roleChat.render()}
+  }catch(e){toast(errText(e&&e.code))}
+  btn.disabled=false;btn.textContent='Hinweis';
+};
+
+/* ---------- cards ---------- */
+let study=null,cardDir='en';
+function stats(cards){
+  const now=Date.now();let known=0,due=0,wrong=0;
+  cards.forEach(c=>{const p=getP(c.id);if(p.box>=3)known++;if(p.wrong)wrong++;if(!p.box||p.due<=now)due++});
+  return {known,due,wrong,n:cards.length};
+}
+function renderCards(){
+  const root=$('#cards-root');if(!root)return;
+  if(study){renderStudy();return}
+  root.textContent='';
+  const decks=allDecks();
+  const all=decks.flatMap(d=>d.cards);
+  const wrongCards=all.filter(c=>getP(c.id).wrong);
+  const head=el('div','pagehead');head.appendChild(el('h2',null,'Karteikarten'));root.appendChild(head);
+
+  const mb=el('button','deck mist');
+  const nm=el('div','nm');nm.appendChild(el('b',null,'Meine Fehler'));
+  nm.appendChild(el('span','tiny',wrongCards.length?'Wörter, die du falsch hattest':'Noch keine. Fehler aus Gesprächen und Karten landen hier.'));
+  mb.appendChild(nm);if(wrongCards.length)mb.appendChild(el('span','badge',String(wrongCards.length)));
+  mb.disabled=!wrongCards.length;mb.onclick=()=>startStudy('Meine Fehler',wrongCards,true);
+  root.appendChild(mb);
+
+  root.appendChild(el('div','lab','Themen'));
+  decks.forEach(d=>{
+    const s=stats(d.cards);
+    const b=el('button','deck');const n=el('div','nm');
+    n.appendChild(el('b',null,d.name));
+    n.appendChild(el('span','tiny',s.n+' Karten · '+s.due+' fällig'));
+    const bar=el('div','bar');const f=el('i');f.style.width=(s.n?Math.round(100*s.known/s.n):0)+'%';bar.appendChild(f);n.appendChild(bar);
+    b.appendChild(n);if(s.wrong)b.appendChild(el('span','badge',s.wrong+' Fehler'));
+    b.onclick=()=>startStudy(d.name,d.cards,false);root.appendChild(b);
+  });
+
+  const gen=el('div','panel stack');
+  gen.appendChild(el('b',null,'Eigenes Thema'));
+  gen.appendChild(el('span','tiny','Claude erstellt zehn Karten auf B1-Niveau, zum Beispiel „Bank“, „Fahrradreparatur“ oder „Wohnungssuche“.'));
+  const row=el('div','composer');row.style.padding='0';
+  const inp=el('input');inp.type='text';inp.id='gen-topic';inp.placeholder='Thema eingeben';inp.setAttribute('aria-label','Thema');
+  inp.style.cssText='flex:1;min-width:0;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 14px';
+  const go=el('button','btn','Erstellen');
+  go.onclick=async()=>{
+    const t=inp.value.trim();if(!t)return;go.disabled=true;go.textContent='…';
+    try{
+      const r=await askJSON(`Create 10 English vocabulary flashcards for a German-speaking learner at level B1 on the topic ${JSON.stringify(t)}. Useful everyday words and phrases, not too basic. Answer with ONLY JSON: {"cards":[{"en":"...","de":"German meaning","ex":"short English example sentence"}]}`,{modelTier:'default'});
+      const list=(r.cards||[]).filter(c=>c&&c.en&&c.de);
+      list.forEach(c=>addCard(String(c.en),String(c.de),String(c.ex||''),t,false));
+      toast(list.length+' Karten erstellt');
+    }catch(e){toast(errText(e&&e.code))}
+    go.disabled=false;go.textContent='Erstellen';
+  };
+  row.appendChild(inp);row.appendChild(go);gen.appendChild(row);root.appendChild(gen);
+}
+function startStudy(name,cards,mist){
+  const now=Date.now();
+  const w=shuffle(cards.filter(c=>getP(c.id).wrong));
+  const d=shuffle(cards.filter(c=>!getP(c.id).wrong&&(!getP(c.id).box||getP(c.id).due<=now)));
+  const rest=shuffle(cards.filter(c=>!w.includes(c)&&!d.includes(c)));
+  let q=w.concat(d).concat(rest).slice(0,mist?20:12);
+  study={name,queue:q,idx:0,flip:false,good:0,again:0,total:q.length,requeued:{},mist};
+  renderCards();
+}
+function grade(ok){
+  const c=study.queue[study.idx];const p=Object.assign({box:0,due:0,wrong:false},S.progress[c.id]);
+  const days=[0,1,3,7,14];
+  if(ok){p.box=Math.min(p.box+1,4);p.due=Date.now()+days[p.box]*864e5;if(p.wrong&&p.box>=2)p.wrong=false;study.good++}
+  else{p.box=0;p.due=0;p.wrong=true;study.again++;if(!study.requeued[c.id]){study.requeued[c.id]=1;study.queue.push(c)}}
+  S.progress[c.id]=p;save();study.idx++;study.flip=false;renderCards();
+}
+function renderStudy(){
+  const root=$('#cards-root');root.textContent='';
+  const st=study;
+  const head=el('div','pagehead');head.appendChild(el('h2',null,st.name));
+  const back=el('button','btn ghost','Zurück');back.onclick=()=>{study=null;renderCards()};head.appendChild(back);root.appendChild(head);
+  if(st.idx>=st.queue.length){
+    const p=el('div','panel stack');p.appendChild(el('h3',null,'Geschafft'));
+    p.appendChild(el('div',null,st.good+' gewusst, '+st.again+' zum Wiederholen.'));
+    const wrong=allDecks().flatMap(d=>d.cards).filter(c=>getP(c.id).wrong);
+    if(wrong.length){const b=el('button','btn','Fehler wiederholen ('+wrong.length+')');b.onclick=()=>startStudy('Meine Fehler',wrong,true);p.appendChild(b)}
+    const b2=el('button','btn ghost','Zur Übersicht');b2.onclick=()=>{study=null;renderCards()};p.appendChild(b2);
+    root.appendChild(p);return;
+  }
+  const c=st.queue[st.idx];
+  const pr=el('div','prog');const bar=el('div','bar');const f=el('i');f.style.width=Math.round(100*st.idx/st.queue.length)+'%';bar.appendChild(f);
+  pr.appendChild(bar);pr.appendChild(el('span','tiny',(st.idx+1)+' / '+st.queue.length));root.appendChild(pr);
+  const dir=el('div','seg');
+  [['en','Englisch → Deutsch'],['de','Deutsch → Englisch']].forEach(([k,l])=>{const b=el('button',null,l);b.setAttribute('aria-pressed',String(cardDir===k));b.onclick=()=>{cardDir=k;st.flip=false;renderCards()};dir.appendChild(b)});
+  root.appendChild(dir);
+  const card=el('button','flash');card.setAttribute('aria-label','Karte umdrehen');
+  const front=cardDir==='en'?c.en:c.de,back2=cardDir==='en'?c.de:c.en;
+  card.appendChild(el('span','tag',st.flip?(cardDir==='en'?'Deutsch':'Englisch'):(cardDir==='en'?'Englisch':'Deutsch')));
+  card.appendChild(el('div','big',st.flip?back2:front));
+  if(st.flip&&c.ex)card.appendChild(el('div','ex',c.ex));
+  if(!st.flip)card.appendChild(el('span','tiny','Antippen zum Umdrehen'));
+  if(getP(c.id).wrong)card.appendChild(el('span','badge','Fehlerwort'));
+  card.onclick=()=>{st.flip=!st.flip;renderCards()};
+  root.appendChild(card);
+  const sp=el('button','btn soft','Englisch vorlesen');sp.onclick=()=>speak(c.en+(st.flip&&c.ex?'. '+c.ex:''),'en-US');root.appendChild(sp);
+  const g=el('div','gradebtns');
+  const no=el('button','btn no','Nochmal'),yes=el('button','btn yes','Gewusst');
+  no.onclick=()=>grade(false);yes.onclick=()=>grade(true);g.appendChild(no);g.appendChild(yes);root.appendChild(g);
+}
+
+/* ---------- translator ---------- */
+const EXAMPLES=['I\'ve been living here since 2019.','If I had more time, I would learn Spanish.','She told me not to wait for her.','Could you tell me where the station is?'];
+const exBox=$('#tr-ex');
+EXAMPLES.forEach(t=>{const b=el('button','chip',t);b.onclick=()=>{$('#tr-in').value=t;$('#tr-go').click()};exBox.appendChild(b)});
+$('#tr-go').onclick=async()=>{
+  const text=$('#tr-in').value.trim();if(!text)return;
+  const btn=$('#tr-go'),out=$('#tr-out');btn.disabled=true;btn.textContent='Claude denkt …';out.textContent='';
+  try{
+    const r=await askJSON(`You are an English teacher for German speakers at level B1. The input may be English or German. If it is German, first translate it into natural English. Then explain the English sentence word by word.
+Input: ${JSON.stringify(text)}
+Answer with ONLY JSON: {"english":"the English sentence","german":"natural German translation","words":[{"w":"word exactly as it appears in the English sentence, in order","de":"German meaning in this context","type":"word class in German, e.g. Verb, Nomen, Artikel, Präposition","note":"optional short German note on tense, phrasal verb, contraction or usage"}],"grammar_de":"one or two short German sentences about the most useful grammar point"}
+Rules: cover every word in order, no punctuation entries. Split contractions such as I've into one entry with the full meaning (ich habe). Keep phrasal verbs and fixed phrases as one entry.`);
+    drawTranslation(r);
+  }catch(e){const d=el('div','err',errText(e&&e.code));out.appendChild(d)}
+  btn.disabled=false;btn.textContent='Erklären';
+};
+function drawTranslation(r){
+  const out=$('#tr-out');out.textContent='';
+  const top=el('div','panel stack');
+  top.appendChild(el('div','lab','Englisch'));
+  top.appendChild(el('div','result-en',String(r.english||'')));
+  const sp=el('button','btn soft','Vorlesen');sp.onclick=()=>speak(String(r.english||''),'en-US');
+  top.appendChild(el('div',null,String(r.german||'')));top.appendChild(sp);out.appendChild(top);
+  out.appendChild(el('div','lab','Wort für Wort'));
+  const words=el('div','words');const detail=el('div','panel stack');detail.hidden=true;
+  const list=Array.isArray(r.words)?r.words:[];
+  list.forEach(w=>{
+    const b=el('button','wd');b.setAttribute('aria-pressed','false');
+    b.appendChild(el('span','e',String(w.w)));b.appendChild(el('span','g',String(w.de||'')));
+    if(w.type)b.appendChild(el('span','t',String(w.type)));
+    b.onclick=()=>{
+      words.querySelectorAll('.wd').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');
+      detail.hidden=false;detail.textContent='';
+      detail.appendChild(el('b',null,w.w+' = '+(w.de||'')));
+      if(w.note)detail.appendChild(el('span',null,String(w.note)));
+      const add=el('button','btn soft','Als Karteikarte speichern');
+      add.onclick=()=>{addCard(String(w.w),String(w.de||''),String(r.english||''),'Aus Übersetzer',false);add.disabled=true;add.textContent='Gespeichert'};
+      detail.appendChild(add);
+    };
+    words.appendChild(b);
+  });
+  out.appendChild(words);out.appendChild(detail);
+  if(r.grammar_de){const g=el('div','panel stack');g.appendChild(el('div','lab','Grammatik'));g.appendChild(el('div',null,String(r.grammar_de)));out.appendChild(g)}
+}
+
+/* ---------- start ---------- */
+route();renderCards();initDb();
+</script>
