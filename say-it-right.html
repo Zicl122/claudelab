@@ -341,7 +341,7 @@ Chat.prototype.transcript=function(hist){
 };
 Chat.prototype.send=async function(text){
   text=(text||'').trim();if(!text||this.busy)return;
-  const u={role:'user',text};const before=this.hist.slice();
+  this.hist.forEach(h=>{delete h.suggest});const u={role:'user',text};const before=this.hist.slice();
   this.hist.push(u);this.busy=true;this.render();
   try{
     const r=await this.cfg.ask(before,text);
@@ -367,12 +367,12 @@ Chat.prototype.retry=function(){
 Chat.prototype.toggleMic=function(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   const help='Spracheingabe geht hier nicht. Tippe ins Textfeld und nutze das Mikrofon deiner Handy-Tastatur.';
-  if(!SR){toast(help);return}
+  if(!SR){toast(help);this.input.focus();return}
   if(this.rec){this.rec.stop();return}
   const r=new SR();r.lang='en-US';r.interimResults=true;r.maxAlternatives=1;
   let heard='',failed=false;
   r.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;heard=t;this.input.value=t};
-  r.onerror=e=>{failed=true;toast(e.error==='no-speech'?'Ich habe nichts gehört. Versuch es nochmal.':help)};
+  r.onerror=e=>{failed=true;toast(e.error==='no-speech'?'Ich habe nichts gehört. Versuch es nochmal.':help);if(e.error!=='no-speech')this.input.focus()};
   r.onend=()=>{this.rec=null;this.mic.classList.remove('on');if(heard.trim()&&!failed){const t=this.input.value;this.input.value='';this.send(t)}};
   try{r.start();this.rec=r;this.mic.classList.add('on')}catch(e){toast(help)}
 };
