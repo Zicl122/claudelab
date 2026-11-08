@@ -417,9 +417,9 @@ corrections: array (max 2) of {"wrong": the faulty sentence copied exactly from 
 vocab: array (max 3) of words or phrases the learner got wrong or needed, as {"en":"...","de":"German meaning","ex":"short English example"}. Empty if none.`;
 function tutorPrompt(hist,text){
   return `You are a friendly English tutor for a German-speaking learner at level B1. The learner talks to you in English (by voice or typing).
-Your own reply is in simple SPANISH: very short, easy sentences (A2), at most 3 sentences. React to what the learner said, then ask ONE short follow-up question in Spanish that the learner answers in English. If the learner wrote in German or Spanish instead of English, gently ask them in Spanish to try in English and give no corrections.
+Your own reply is in simple ENGLISH: short, easy sentences (A2 to B1 vocabulary), at most 3 sentences. React to what the learner said, then ask ONE short follow-up question that the learner answers in English. If the learner wrote in German instead of English, gently ask them to try in English and give no corrections.
 ${FIXRULES}
-Answer with ONLY a JSON object, no other text: {"corrections":[...],"vocab":[...],"reply":"Spanish reply","reply_de":"German translation of the reply"}
+Answer with ONLY a JSON object, no other text: {"corrections":[...],"vocab":[...],"reply":"English reply","reply_de":"German translation of the reply"}
 
 Conversation so far:
 ${Chat.prototype.transcript(hist)}
@@ -453,8 +453,8 @@ function route(){
 addEventListener('hashchange',route);
 
 /* ---------- tutor ---------- */
-const tutor=new Chat($('#v-tutor'),{lang:'es-ES',ask:(h,t)=>askJSON(tutorPrompt(h,t))});
-tutor.hist.push({role:'bot',text:'¡Hola! Soy tu tutor de inglés. Habla conmigo en inglés. ¿Cómo estás hoy?',de:'Hallo! Ich bin dein Englischlehrer. Sprich mit mir auf Englisch. Wie geht es dir heute?',
+const tutor=new Chat($('#v-tutor'),{lang:'en-US',ask:(h,t)=>askJSON(tutorPrompt(h,t))});
+tutor.hist.push({role:'bot',text:'Hi! I am your English tutor. Let us talk. How are you today?',de:'Hallo! Ich bin dein Englischlehrer. Lass uns sprechen. Wie geht es dir heute?',
   suggest:['I am fine, thank you. How are you?','Let me tell you about my day.','I would like to practise my English.','Yesterday I go to the cinema.']});
 tutor.render();
 
