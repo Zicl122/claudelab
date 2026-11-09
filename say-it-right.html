@@ -136,12 +136,28 @@ textarea{width:100%;min-height:96px;border-radius:var(--r);border:1px solid var(
 .wd[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .result-en{font:600 20px/1.3 var(--display)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;max-width:min(92vw,520px);z-index:20;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.hdr{display:flex;align-items:center;gap:8px}
+.livebtn{display:flex;align-items:center;gap:6px;border:0;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:14px;padding:0 14px;height:40px}
+.livebtn svg{width:18px;height:18px}
+.iconbtn[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+@media (max-width:420px){.lvl{display:none}}
+.sheet{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,var(--ink) 45%,transparent);display:flex;align-items:flex-end;justify-content:center}
+.sheet[hidden]{display:none}
+.sheet-in{background:var(--bg);width:100%;max-width:560px;max-height:90%;overflow-y:auto;border-radius:20px 20px 0 0;
+  padding:20px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.sheet-in h3{font-size:22px}
+.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.sheet textarea{min-height:150px;font-size:14px}
 .err{align-self:stretch;background:var(--wrong-soft);color:var(--wrong);border-radius:12px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 
 <div class="app">
-  <header><div class="brand">Say It <i>Right</i></div><span class="lvl">Englisch · B1</span></header>
+  <header><div class="brand">Say It <i>Right</i></div>
+    <div class="hdr"><span class="lvl">Englisch · B1</span>
+      <button class="iconbtn" id="auto-spk" type="button" aria-pressed="true" aria-label="Antworten automatisch vorlesen" title="Antworten automatisch vorlesen"><svg class="i" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z M17 9a4 4 0 0 1 0 6"/></svg></button>
+      <button class="livebtn" id="live-open" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2 M4 14h3v6H5a1 1 0 0 1-1-1z M20 14h-3v6h2a1 1 0 0 0 1-1z"/></svg>Live sprechen</button>
+    </div></header>
   <main>
     <!-- TUTOR -->
     <section class="view on" id="v-tutor" aria-label="Tutor"></section>
@@ -183,6 +199,21 @@ textarea{width:100%;min-height:96px;border-radius:var(--r);border:1px solid var(
       </div>
     </section>
   </main>
+  <div class="sheet" id="live-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="live-h">
+    <div class="sheet-in">
+      <h3 id="live-h">Live mit dem Tutor sprechen</h3>
+      <div>Diese App darf in claude.ai nicht aufs Mikrofon zugreifen. Echtes Sprechen ohne Tippen geht im <b>Sprachmodus der Claude-App</b>. Mit dieser Anweisung wird Claude dort zu deinem Tutor, mit Korrekturen und deutschen Erklärungen.</div>
+      <ol class="steps">
+        <li>Tippe auf <b>Anweisung kopieren</b>.</li>
+        <li>Öffne in der Claude-App einen neuen Chat, füge den Text ein und sende ihn ab.</li>
+        <li>Tippe auf das Sprachmodus-Symbol neben dem Eingabefeld und sprich einfach los.</li>
+      </ol>
+      <textarea id="live-prompt" readonly aria-label="Anweisung für den Sprachmodus"></textarea>
+      <button class="btn" id="live-copy" type="button">Anweisung kopieren</button>
+      <div class="tiny">Tipps im Gespräch: Sag „Let's do a role-play in a café“ (oder restaurant, hotel, supermarket, doctor). Am Ende sag „Liste“, dann schreibt dir Claude alle Fehler auf: falscher Satz durchgestrichen, richtiger Satz darunter, Erklärung auf Deutsch. Die Wörter kannst du hier unter Karten → Eigenes Thema üben.</div>
+      <button class="btn ghost" id="live-close" type="button">Schließen</button>
+    </div>
+  </div>
   <nav aria-label="Bereiche">
     <a href="#tutor" data-t="tutor"><svg class="i" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z M5 11a7 7 0 0 0 14 0 M12 18v3"/></svg>Tutor</a>
     <a href="#rollenspiel" data-t="rollenspiel"><svg class="i" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Rollenspiel</a>
@@ -350,12 +381,13 @@ Chat.prototype.send=async function(text){
     u.vocab.forEach(v=>addCard(String(v.en),String(v.de),String(v.ex||''),'Aus Gesprächen',true));
     u.checked=true;
     this.hist.push({role:'bot',text:String(r.reply||'…'),de:String(r.reply_de||'')});
+    if(autoSpeak&&r.reply)speak(String(r.reply),this.cfg.lang);
   }catch(e){u.checked=false;this.hist.push({role:'err',code:e&&e.code,text})}
   this.busy=false;this.render();
 };
 Chat.prototype.open=async function(){ // bot speaks first (roleplay)
   this.busy=true;this.render();
-  try{const r=await this.cfg.opening();this.hist.push({role:'bot',text:String(r.reply||'…'),de:String(r.reply_de||'')})}
+  try{const r=await this.cfg.opening();this.hist.push({role:'bot',text:String(r.reply||'…'),de:String(r.reply_de||'')});if(autoSpeak&&r.reply)speak(String(r.reply),this.cfg.lang)}
   catch(e){this.hist.push({role:'err',code:e&&e.code,opening:true})}
   this.busy=false;this.render();
 };
@@ -651,6 +683,39 @@ function drawTranslation(r){
   out.appendChild(words);out.appendChild(detail);
   if(r.grammar_de){const g=el('div','panel stack');g.appendChild(el('div','lab','Grammatik'));g.appendChild(el('div',null,String(r.grammar_de)));out.appendChild(g)}
 }
+
+/* ---------- live voice + auto speak ---------- */
+let autoSpeak=true;
+try{if(localStorage.getItem('sayitright.autospeak')==='0')autoSpeak=false}catch(e){}
+const spkBtn=$('#auto-spk');
+function drawSpk(){spkBtn.setAttribute('aria-pressed',String(autoSpeak))}
+spkBtn.onclick=()=>{autoSpeak=!autoSpeak;drawSpk();try{localStorage.setItem('sayitright.autospeak',autoSpeak?'1':'0')}catch(e){}
+  if(!autoSpeak)try{speechSynthesis.cancel()}catch(e){}
+  toast(autoSpeak?'Antworten werden automatisch vorgelesen.':'Automatisches Vorlesen ist aus.')};
+drawSpk();
+const LIVE_PROMPT=`Du bist mein Englisch-Tutor. Ich spreche Deutsch, mein Englisch ist auf Niveau B1. Wir sprechen im Sprachmodus miteinander.
+
+So läuft das Gespräch:
+- Antworte auf Englisch, in kurzen, einfachen Sätzen (höchstens drei). Stell danach eine kurze Frage, damit ich weiterspreche.
+- Wenn ich einen Fehler mache, sag zuerst „Kleine Korrektur“, sag dann den richtigen Satz auf Englisch, erklär die Regel in einem kurzen Satz auf Deutsch und mach dann auf Englisch weiter.
+- Korrigiere nur echte Fehler, höchstens einen pro Antwort. Kleine Aussprache- oder Erkennungsfehler ignorierst du.
+- Wenn ich ein Rollenspiel möchte (Café, Restaurant, Hotel, Supermarkt, Arzt), spielst du die andere Rolle, bleibst in der Rolle und korrigierst trotzdem kurz.
+- Wenn ich ein Wort nicht kenne und es auf Deutsch sage, nenn mir das englische Wort.
+- Wenn ich „Liste“ sage, schreib mir alle Fehler aus dem Gespräch auf: den falschen Satz ~~durchgestrichen~~, darunter den richtigen Satz und eine kurze Erklärung auf Deutsch. Danach eine Liste der neuen Wörter (Englisch – Deutsch).
+
+Fang jetzt an: Begrüß mich auf Englisch und stell mir eine einfache Frage.`;
+$('#live-prompt').value=LIVE_PROMPT;
+const sheet=$('#live-sheet');
+$('#live-open').onclick=()=>{sheet.hidden=false;$('#live-copy').focus()};
+$('#live-close').onclick=()=>{sheet.hidden=true};
+sheet.onclick=e=>{if(e.target===sheet)sheet.hidden=true};
+addEventListener('keydown',e=>{if(e.key==='Escape')sheet.hidden=true});
+$('#live-copy').onclick=()=>{
+  const b=$('#live-copy'),ta=$('#live-prompt');
+  const done=()=>{b.textContent='Kopiert';toast('Kopiert. Jetzt in einem neuen Claude-Chat einfügen.');setTimeout(()=>{b.textContent='Anweisung kopieren'},2500)};
+  const fallback=()=>{ta.focus();ta.select();toast('Der Text ist markiert. Halte ihn gedrückt und wähle „Kopieren“.')};
+  try{navigator.clipboard.writeText(LIVE_PROMPT).then(done,fallback)}catch(e){fallback()}
+};
 
 /* ---------- start ---------- */
 route();renderCards();initDb();
